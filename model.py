@@ -118,7 +118,11 @@ class Model(nn.Module):
             score = torch.mul(emb_u, emb_v).squeeze()
             score = torch.sum(score, dim=1)
             neg_emb_v = self.v_embeddings(neg_v)
-            neg_score = torch.bmm(neg_emb_v, emb_u.unsqueeze(2)).squeeze()
+            emb_u_new = emb_u.view(700, 650)
+            emb_u_new = emb_u_new.view(700, 1, 650)
+            neg_emb_v = torch.transpose(neg_emb_v, 1, 2)
+            neg_score = torch.bmm(emb_u_new, neg_emb_v).squeeze()
+            # neg_score = torch.bmm(neg_emb_v, emb_u.unsqueeze(2)).squeeze()
             
             if loss_function == "log":
                 score = F.logsigmoid(score)
