@@ -102,19 +102,18 @@ def minibatch(data, batch_size, seq_length):
 
 def get_neg_sample(vocab_size, pos_word, count):
     # Equal distribution
-        neg_v = numpy.random.randint(0, vocab_size - 1, size=(len(pos_word), count)).tolist()
-        for i in range(len(neg_v)):
-            if pos_word[i] in neg_v[i]:
-                for j in range(len(neg_v[i])):
-                    if neg_v[i][j] == pos_word[i]:
-                        #print("one time")
-                        newValue = numpy.random.randint(0, vocab_size - 1)
-                        while newValue == pos_word[i]:
-                            newValue = numpy.random.randint(0, vocab_size - 1)
-                        neg_v[i][j] = newValue
+    #     neg_v = numpy.random.randint(0, vocab_size - 1, size=(len(pos_word), count)).tolist()
+    #     for i in range(len(neg_v)):
+    #         if pos_word[i] in neg_v[i]:
+    #             for j in range(len(neg_v[i])):
+    #                 if neg_v[i][j] == pos_word[i]:
+    #                     #print("one time")
+    #                     newValue = numpy.random.randint(0, vocab_size - 1)
+    #                     while newValue == pos_word[i]:
+    #                         newValue = numpy.random.randint(0, vocab_size - 1)
+    #                     neg_v[i][j] = newValue
        #unigram sampling
-        neg_v = numpy.random.choice(
-                sample_table, size=(len(pos_word), count)).tolist()
+        neg_v = numpy.random.choice(sample_table, size=(len(pos_word), count)).tolist()
 
         for i in range(len(neg_v)):
             if pos_word[i] in neg_v[i]:
