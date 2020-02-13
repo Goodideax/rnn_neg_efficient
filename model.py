@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+from torch.autograd import Variable
 #Embedding module.
 class Embed(nn.Module):
     def __init__(self, vocab_size, embed_size):
@@ -83,13 +83,16 @@ class Model(nn.Module):
         self.embed = Embed(vocab_size, hidden_size)
         self.rnns = [LSTM(hidden_size, hidden_size) if lstm_type == "custom" else nn.LSTM(hidden_size, hidden_size) for i in range(layer_num)]
         self.rnns = nn.ModuleList(self.rnns)
-        self.fc = Linear(hidden_size, vocab_size)
+        #self.fc = Linear(hidden_size, vocab_size)
         self.dropout = nn.Dropout(p=dropout)
+        self.v_embeddings = nn.Embedding(vocab_size, hidden_size, sparse=True)
         self.reset_parameters()
         
     def reset_parameters(self):
         for param in self.parameters():
             nn.init.uniform_(param, -self.winit, self.winit)
+        #set the output layer as all zeros
+        self.v_embeddings.weight.data.uniform_(-0, 0)
             
     def state_init(self, batch_size):
         dev = next(self.parameters()).device
@@ -100,11 +103,35 @@ class Model(nn.Module):
     def detach(self, states):
         return [(h.detach(), c.detach()) for (h,c) in states]
     
-    def forward(self, x, states):
+    def forward(self, x, states, v=None, neg_v=None, noNeg=False, boost=1, loss_function="log"):
         x = self.embed(x)
         x = self.dropout(x)
         for i, rnn in enumerate(self.rnns):
             x, states[i] = rnn(x, states[i])
             x = self.dropout(x)
-        scores = self.fc(x)
-        return scores, states
+        emb_u = x
+        scores = None
+        loss = None
+        if self.training==True:
+            #y is the true label
+            emb_v = self.v_embeddings(v)
+            score = torch.mul(emb_u, emb_v).squeeze()
+            score = torch.sum(score, dim=1)
+            neg_emb_v = self.v_embeddings(neg_v)
+            neg_score = torch.bmm(neg_emb_v, emb_u.unsqueeze(2)).squeeze()
+            
+            if loss_function == "log":
+                score = F.logsigmoid(score)
+                # sigmoid(-1*neg_score) = 1 - sigmoid(neg_score)
+                neg_score = F.logsigmoid(-1* neg_score)*boost
+                if noNeg == False:
+                    loss =  -1 * (torch.sum(score) + torch.sum(neg_score))
+                else:
+                    # if not /400, will be all nan
+                    loss =  -1 * (torch.sum(score) + torch.sum(neg_score))/400
+        else:
+            score = torch.bmm(emb_u, v_embeddings)
+            score = F.sigmoid(score) 
+
+        #scores = self.fc(x)
+        return scores, states, loss

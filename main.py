@@ -6,6 +6,7 @@ import timeit
 import argparse
 from model import Model
 import torch.nn.functional as F
+from torch.autograd import Variable
 # global parameters
 sample_table = []
 import sys
@@ -124,7 +125,7 @@ def get_neg_sample(vocab_size, pos_word, count):
                         while newValue == pos_word[i].item():
                             newValue = numpy.random.choice(sample_table, size=( 1))[0]
                         neg_v[i][j] = newValue
-        return torch.tensor(neg_v)
+        return neg_v
 
 
 #The loss function.
@@ -204,9 +205,17 @@ def train(data, model, epochs, epoch_threshold, lr, factor, max_norm, beta=1, ne
             model.zero_grad()
             states = model.detach(states)
             #scores, states = model(x, states)
-            prob, states = model(x, states)
-        #    import pdb; pdb.set_trace()
-            loss = new_neg_nll_loss(prob, y, model.vocab_size, neg, beta)
+            neg = get_neg_sample(model.vocab_size, y.reshape(-1), neg)
+            y = Variable(torch.LongTensor(y))
+            neg = Variable(torch.LongTensor(neg))
+            if args.device == torch.device("cuda"):
+                y = y.cuda()
+                neg = neg.cuda()
+             
+            #import pdb; pdb.set_trace()
+            prob, states, loss = model(x, states, y, neg)
+
+            #loss = new_neg_nll_loss(prob, y, model.vocab_size, neg, beta)
             
             loss.backward()
             with torch.no_grad():
