@@ -190,7 +190,7 @@ def new_perplexity(data, model):
     return np.exp(np.mean(losses))
 
 
-def train(data, model, epochs, epoch_threshold, lr, factor, max_norm, beta=1, neg=15):
+def train(data, model, epochs, epoch_threshold, lr, factor, max_norm, beta=1, neg_num=15):
     trn, vld, tst = data
     tic = timeit.default_timer()
     total_words = 0
@@ -205,14 +205,16 @@ def train(data, model, epochs, epoch_threshold, lr, factor, max_norm, beta=1, ne
             model.zero_grad()
             states = model.detach(states)
             #scores, states = model(x, states)
-            neg = get_neg_sample(model.vocab_size, y.reshape(-1), neg)
+            
+            #import pdb; pdb.set_trace()
+            neg = get_neg_sample(model.vocab_size, y.reshape(-1), neg_num)
             y = Variable(torch.LongTensor(y))
             neg = Variable(torch.LongTensor(neg))
             if args.device == torch.device("cuda"):
                 y = y.cuda()
                 neg = neg.cuda()
              
-            #import pdb; pdb.set_trace()
+
             prob, states, loss = model(x, states, y, neg)
 
             #loss = new_neg_nll_loss(prob, y, model.vocab_size, neg, beta)
